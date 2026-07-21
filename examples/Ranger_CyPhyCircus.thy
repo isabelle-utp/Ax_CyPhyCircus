@@ -1,5 +1,5 @@
 theory Ranger_CyPhyCircus
-  imports Ax_CyPhyCircus
+  imports "Ax_CyPhyCircus.Ax_CyPhyCircus"
 begin
 
 declare [[literal_variables]]
