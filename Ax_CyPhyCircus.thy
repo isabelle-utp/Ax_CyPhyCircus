@@ -22,10 +22,7 @@ begin
 instance by (fact action_complete_lattice)
 end
 
-
 subsection \<open> IsaCyPhyCircus Operators \<close>
-
-term ualtern_list
 
 axiomatization
   cSpec          :: "('a \<Longrightarrow> 's) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> ('e, 's) cyphyaction" and
