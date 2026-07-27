@@ -2,8 +2,6 @@ theory Ranger_CyPhyCircus
   imports "Axiomatic_CyPhyCircus.Ax_CyPhyCircus"
 begin
 
-declare [[literal_variables]]
-
 consts
   targetPos    :: real
   targetRadius :: real
@@ -15,6 +13,7 @@ chantype RangerChannels =
   getPos          :: real
   getVel          :: real
   setVel          :: real
+  setPos          :: real
   targetTriggered :: bool
   proceed         :: unit
 
@@ -41,7 +40,7 @@ definition GetVars :: "(RangerChannels, RangerState) cyphyaction" where
   "GetVars = getPos\<^bold>!pos \<rightarrow> Skip \<box> getVel\<^bold>!vel \<rightarrow> Skip"
 
 definition SetVars :: "(RangerChannels, RangerState) cyphyaction" where
-  "SetVars = getPos\<^bold>?x \<rightarrow> (pos := x) \<box> setVel\<^bold>?x \<rightarrow> (vel := x)"
+  "SetVars = setPos\<^bold>?x \<rightarrow> pos := x \<box> setVel\<^bold>?x \<rightarrow> vel := x"
 
 recursive QueryUpdate :: "(RangerChannels, RangerState) cyphyaction" 
   where "QueryUpdate = ((GetVars \<box> SetVars) ;; QueryUpdate) \<box> proceed \<rightarrow> Skip"
@@ -52,8 +51,9 @@ definition "EventBuffer = targetTrig := False ;; (\<mu> X. (targetTriggered\<^bo
 
 recursive where "RangerLoop = stepTimer := 0 ;; Movement ;; InputTriggers ;; (QueryUpdate \<triangle>[0] Skip) ;; RangerLoop"
 
-definition "envVars = id_lens"
+definition "envVars = ((pos, vel, stepTimer))\<^sub>v"
+definition "bufferVars = targetTrig"
 
-definition "MainAction = RangerLoop \<lbrakk>envVars | triggerChan | \<^bold>0\<rbrakk> EventBuffer"
+definition "MainAction = RangerLoop \<lbrakk>envVars | triggerChan | bufferVars\<rbrakk> EventBuffer"
 
 end
