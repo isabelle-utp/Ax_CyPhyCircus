@@ -4,9 +4,7 @@ theory Ax_CyPhyCircus
 begin
 
 unbundle UTP_Syntax
-
-no_notation disj  (infixr \<open>|\<close> 30)
-no_notation funcset (infixr "\<rightarrow>" 60)
+unbundle Circus_Syntax
 
 subsection \<open> Types and Constants \<close>
 
@@ -20,6 +18,15 @@ axiomatization where
 instantiation cyphyaction :: (type, type) complete_lattice
 begin
 instance by (fact action_complete_lattice)
+end
+
+instantiation cyphyaction :: (type, type) refine
+begin
+definition "ref_by_cyphyaction = ((\<ge>) :: ('a, 'b) cyphyaction \<Rightarrow> ('a, 'b) cyphyaction \<Rightarrow> bool)"
+definition "sref_by_cyphyaction = ((>) :: ('a, 'b) cyphyaction \<Rightarrow> ('a, 'b) cyphyaction \<Rightarrow> bool)"
+instance 
+  by (intro_classes, unfold_locales)
+     (simp_all add: ref_by_cyphyaction_def sref_by_cyphyaction_def dual_order.strict_iff_not)
 end
 
 subsection \<open> IsaCyPhyCircus Operators \<close>
@@ -64,6 +71,7 @@ adhoc_overloading
   ExtChoice \<rightleftharpoons> cExtChoice and 
   InputPrefix \<rightleftharpoons> cInputPrefix and
   OutputPrefix \<rightleftharpoons> cOutputPrefix and
+  SyncPrefix \<rightleftharpoons> cSyncPrefix and
   Interrupt \<rightleftharpoons> cInterrupt and
   Rename \<rightleftharpoons> cRename and
   Hide \<rightleftharpoons> cHide and
@@ -80,10 +88,10 @@ axiomatization where
   cExtChoice_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cExtChoice P\<^sub>1 Q\<^sub>1 \<le> cExtChoice P\<^sub>2 Q\<^sub>2" and
   cInput_mono [mono_rule]: "\<lbrakk> \<And> x::'a. (P x :: ('e, 's) cyphyaction) \<le> Q x \<rbrakk> \<Longrightarrow> c\<^bold>?x \<rightarrow> P x \<le> c\<^bold>?x \<rightarrow> Q x"
 
-unbundle Circus_Syntax
-
 declare [[literal_variables]]
 
 notation useq (infixr ";" 55)
+
+syntax "_SequentialIter" :: "id \<Rightarrow> logic \<Rightarrow> logic \<Rightarrow> logic" (";_/\<in>_. _" [0, 0, 10] 10)
 
 end
