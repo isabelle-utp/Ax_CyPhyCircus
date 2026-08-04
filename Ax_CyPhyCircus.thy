@@ -37,6 +37,7 @@ axiomatization
   cSeq           :: "('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
   cCond          :: "('e, 's) cyphyaction \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
   cAlternList    :: "(('s \<Rightarrow> bool) \<times> ('e, 's) cyphyaction) list \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
+  cVarBlock      :: "String.literal \<Rightarrow> 'a itself \<Rightarrow> (('a \<Longrightarrow> 's) \<Rightarrow> ('e, 's) cyphyaction) \<Rightarrow> ('e, 's) cyphyaction" and
   cStop          :: "('e, 's) cyphyaction" and
   cChaos         :: "('e, 's) cyphyaction" and
   cGuard         :: "(bool, 's) expr \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
@@ -65,6 +66,7 @@ adhoc_overloading
   uassigns \<rightleftharpoons> cAssigns and
   ucond \<rightleftharpoons> cCond and
   ualtern_list \<rightleftharpoons> "cAlternList" and
+  uvarblock \<rightleftharpoons> cVarBlock and
   Skip \<rightleftharpoons> cSkip and
   Stop \<rightleftharpoons> cStop and
   Guard \<rightleftharpoons> cGuard and
@@ -92,6 +94,6 @@ declare [[literal_variables]]
 
 notation useq (infixr ";" 55)
 
-syntax "_SequentialIter" :: "id \<Rightarrow> logic \<Rightarrow> logic \<Rightarrow> logic" (";_/\<in>_. _" [0, 0, 10] 10)
+syntax "_useq_iter" :: "id \<Rightarrow> logic \<Rightarrow> logic \<Rightarrow> logic" (";_/\<in>_. _" [0, 0, 10] 10)
 
 end
