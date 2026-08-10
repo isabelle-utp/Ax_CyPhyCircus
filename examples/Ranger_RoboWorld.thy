@@ -9,7 +9,6 @@ subsection \<open> Channels \<close>
 datatype InOut = "in" | "out"
 
 chantype RangerChan =   
-  tstamp                      :: real
   getRobotPosition            :: "real \<times> real"
   getRobotVelocity            :: "real \<times> real"
   getRobotAcceleration        :: "real \<times> real"
@@ -142,7 +141,7 @@ definition "Move_Operation_Mapping = MoveCall"
 
 recursive where 
   "StopEvent = 
-    stop\<^bold>!InOut.out \<rightarrow> 
+    stop\<^bold>.out \<rightarrow> 
     setRobotVelocity\<^bold>!(0, 0) \<rightarrow> 
     setRobotAngularVelocity\<^bold>!0 \<rightarrow> 
     StopEvent"

@@ -88,8 +88,10 @@ subsection \<open> Axioms \<close>
 axiomatization where
   cSeq_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cSeq P\<^sub>1 Q\<^sub>1 \<le> cSeq P\<^sub>2 Q\<^sub>2" and
   cExtChoice_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cExtChoice P\<^sub>1 Q\<^sub>1 \<le> cExtChoice P\<^sub>2 Q\<^sub>2" and
+  cSync_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2 \<rbrakk> \<Longrightarrow> a \<rightarrow> P\<^sub>1 \<le> a \<rightarrow> P\<^sub>2" and
   cInput_mono [mono_rule]: "\<lbrakk> \<And> x::'a. (P x :: ('e, 's) cyphyaction) \<le> Q x \<rbrakk> \<Longrightarrow> c\<^bold>?x \<rightarrow> P x \<le> c\<^bold>?x \<rightarrow> Q x" and
   cOutput_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2 \<rbrakk> \<Longrightarrow> c\<^bold>!e \<rightarrow> P\<^sub>1 \<le> c\<^bold>!e \<rightarrow> P\<^sub>2"
+
 
 
 declare [[literal_variables]]
