@@ -20,6 +20,7 @@ begin
 instance by (fact action_complete_lattice)
 end
 
+(* OR-01 - Refinement order: P \<sqsubseteq> Q iff Q \<le> P, so internal choice is the lattice join. *)
 instantiation cyphyaction :: (type, type) refine
 begin
 definition "ref_by_cyphyaction = ((\<ge>) :: ('a, 'b) cyphyaction \<Rightarrow> ('a, 'b) cyphyaction \<Rightarrow> bool)"
@@ -86,8 +87,9 @@ adhoc_overloading
 
 section \<open> Axioms \<close>
 
-subsection \<open>Montonicity\<close>
+subsection \<open>Monotonicity\<close>
 
+(* MO-01 - Sequence, external choice and the three prefixes are monotonic in their action arguments. *)
 axiomatization where
   cSeq_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cSeq P\<^sub>1 Q\<^sub>1 \<le> cSeq P\<^sub>2 Q\<^sub>2" and
   cExtChoice_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cExtChoice P\<^sub>1 Q\<^sub>1 \<le> cExtChoice P\<^sub>2 Q\<^sub>2" and
@@ -105,51 +107,53 @@ named_theorems ax_step_laws
 named_theorems ax_executable_step_laws
   \<open>CSP step laws oriented towards executable CyPhyCircus prefixes\<close>
 
-(* Local channel/event bridge: cSyncPrefix, evsimple and cEventPrefix. *)
+(* Synchronisation prefix as an event prefix on the simple event evsimple. *)
 axiomatization where
   ax_cSync_event_prefix [ax_step_laws]:
     "cSyncPrefix c P = cEventPrefix (evsimple c) P" and
-  (* Local state-independent output/event bridge: cOutputPrefix, prism build and cEventPrefix. *)
+  (* Output prefix with a state-independent value as an event prefix on the built event. *)
   ax_cOutput_event_prefix [ax_step_laws]:
     "cOutputPrefix d (\<lambda> s. v) Q = cEventPrefix (build\<^bsub>d\<^esub> v) Q"
 
-(* Sequence - UCS p. 133, (7.4) *)
+(* SQ-01 to SQ-05 - Sequence: UCS pp. 132-133, (7.1)-(7.4); STOP as left zero, p. 132 (unnumbered) *)
 axiomatization where
+  (* SQ-01 - UCS p. 133, (7.4) *)
   ax_cSeq_event_prefix [ax_step_laws]:
     "cSeq (cEventPrefix e P) Q = cEventPrefix e (cSeq P Q)" and
-  (* Sequence - UCS p. 132, (7.2) *)
+  (* SQ-02 - UCS p. 132, (7.2) *)
   ax_cSeq_skip_left [ax_step_laws]:
     "cSeq cSkip P = P" and
-  (* Sequence - UCS p. 132, (7.1) *)
+  (* SQ-03 - UCS p. 132, (7.1) *)
   ax_cSeq_skip_right [ax_step_laws]:
     "cSeq P cSkip = P" and
-  (* Sequence - UCS p. 132, STOP left-zero law (unnumbered) *)
+  (* SQ-04 - UCS p. 132, STOP left-zero law (unnumbered) *)
   ax_cSeq_stop_left [ax_step_laws]:
     "cSeq cStop P = cStop" and
-  (* Sequence - UCS p. 132, (7.3) *)
+  (* SQ-05 - UCS p. 132, (7.3) *)
   ax_cSeq_assoc [ax_step_laws]:
     "cSeq (cSeq P Q) R = cSeq P (cSeq Q R)"
 
-(* External choice - UCS p. 27, (2.16) *)
+(* EC-01 to EC-04 - External choice: UCS p. 27, (2.16); p. 24, (2.1), (2.5), (2.3) *)
 axiomatization where
+  (* EC-01 - UCS p. 27, (2.16) *)
   ax_cExtChoice_stop_left [ax_step_laws]:
     "cExtChoice cStop P = P" and
-  (* External choice - UCS p. 24, (2.1) *)
+  (* EC-02 - UCS p. 24, (2.1) *)
   ax_cExtChoice_idem [ax_step_laws]:
     "cExtChoice P P = P" and
-  (* External choice - UCS p. 24, (2.5) *)
+  (* EC-03 - UCS p. 24, (2.5) *)
   ax_cExtChoice_assoc [ax_step_laws]:
     "cExtChoice (cExtChoice P Q) R = cExtChoice P (cExtChoice Q R)" and
-  (* External choice - UCS p. 24, (2.3) *)
+  (* EC-04 - UCS p. 24, (2.3) *)
   ax_cExtChoice_comm:
     "cExtChoice P Q = cExtChoice Q P"
 
-(* External choice - UCS pp. 24, 27, (2.3), (2.16) *)
+(* EC-01 / EC-04 - UCS p. 27, (2.16); p. 24, (2.3); STOP as right unit *)
 lemma ax_cExtChoice_stop_right [ax_step_laws]:
   "cExtChoice P cStop = P"
   by (metis ax_cExtChoice_comm ax_cExtChoice_stop_left)
 
-(* Sequence - UCS p. 133, (7.4) *)
+(* SQ-01 - UCS p. 133, (7.4); synchronisation-prefix form, via ax_cSync_event_prefix *)
 lemma ax_cSeq_sync_prefix:
   "cSeq (cSyncPrefix c P) Q = cSyncPrefix c (cSeq P Q)"
   by (simp only: ax_cSync_event_prefix ax_cSeq_event_prefix)
@@ -268,7 +272,7 @@ axiomatization where
     "Domain (R :: ('e \<times> 'e) set) = UNIV \<Longrightarrow> P' \<le> P \<Longrightarrow>
       cRename R P' \<le> cRename R (P :: 'e cyphyprocess)"
 
-(* Local indexed-choice monotonicity contract; UCS p. 233, Theorem 10.1; AFP counterpart: HOL-CSPM mono_GlobalDet_FD. *)
+(* MO-03 - UCS p. 233, Theorem 10.1; AFP HOL-CSPM mono_GlobalDet_FD *)
 axiomatization where
   cExtChoiceIdx_mono [mono_rule]:
     "(\<And>i. i \<in> A \<Longrightarrow> P i \<le> Q i) \<Longrightarrow>
@@ -312,14 +316,14 @@ axiomatization where
     "cExtChoiceIdx I (\<lambda>i. cBoolGuard (b i) (P i)) =
       cExtChoiceIdx {i \<in> I. b i} (P :: 'i \<Rightarrow> 'e cyphyprocess)"
 
-section \<open>Derived CyPhyCircus step and refinement laws\<close>
+section \<open>Derived laws and further axioms\<close>
 
-(* Local prism support: pinned Prisms record/selector definitions. *)
+(* Selector equation of the Prisms record. *)
 lemma refinement_prism_build:
   "prism_build (prism_ext match0 build0 more0) = build0"
   by (simp)
 
-(* Monotonicity (derived) - cSync_mono and ax_cSync_event_prefix; AFP counterpart: HOL-CSP mono_write0_FD *)
+(* MO-02 (derived) - UCS p. 233, Theorem 10.1; from MO-01 (cSync_mono) and ax_cSync_event_prefix; AFP HOL-CSP mono_write0_FD *)
 lemma cEventPrefix_mono [mono_rule]:
   assumes "R\<^sub>1 \<le> R\<^sub>2"
   shows "cEventPrefix e R\<^sub>1 \<le> cEventPrefix e R\<^sub>2"
@@ -341,26 +345,26 @@ lemma cMprefix_empty [cyphy_normalisation]:
   "cMprefix {} P = (cStop :: 'e cyphyprocess)"
   by (simp only: cMprefix_def ax_mp_empty)
 
-(* HI-04 - UCS pp. 27, 96, (2.15), (5.6); derived from HI-01 and MP-01 *)
+(* HI-04 (derived) - UCS p. 96, (5.6); p. 27, (2.15); from HI-01 and MP-01 *)
 lemma ax_hide_stop [cyphy_normalisation]:
   "cHide cStop S = (cStop :: 'e cyphyprocess)"
   using ax_hide_mprefix_disjoint[of "{}" S "\<lambda>_. cStop"]
   by (simp add: cMprefix_empty)
 
-(* MP-02 - Local derivation: cMprefix_def and ax_mp_singleton (AFP GlobalDet_unit counterpart). *)
+(* MP-02 - from cMprefix_def and ax_mp_singleton; AFP GlobalDet_unit counterpart. *)
 lemma cMprefix_singleton [cyphy_normalisation]:
   "cMprefix {e} P = cEventPrefix e (P e :: 'e cyphyprocess)"
   by (simp only: cMprefix_def ax_mp_singleton)
 
-(* Local lattice derivation: cGlobalNdet_def and the complete lattice. *)
+(* Proved from cGlobalNdet_def and the complete lattice. *)
 lemma cGlobalNdet_empty [cyphy_normalisation]: "cGlobalNdet {} P = cStop"
   by (simp add: cGlobalNdet_def)
 
-(* Local lattice derivation: cGlobalNdet_def and the complete lattice. *)
+(* Proved from cGlobalNdet_def and the complete lattice. *)
 lemma cGlobalNdet_singleton [cyphy_normalisation]: "cGlobalNdet {i} P = P i"
   by (simp add: cGlobalNdet_def)
 
-(* Boolean guard - Oliveira p. 199, C.67 *)
+(* CO-04 - Oliveira p. 199, C.67; Boolean guard *)
 lemma cBoolGuard_true [cyphy_normalisation]: "cBoolGuard True P = P"
   (* Boolean guard - Oliveira p. 199, C.68 *)
   and cBoolGuard_false [cyphy_normalisation]: "cBoolGuard False P = cStop"
@@ -376,7 +380,7 @@ lemma cBoolGuard_mprefix [cyphy_normalisation]:
   "cBoolGuard b (cMprefix A P) = cMprefix {e \<in> A. b} (P :: 'e \<Rightarrow> 'e cyphyprocess)"
   by (cases b; simp add: cBoolGuard_def cMprefix_empty)
 
-(* Local identity-completion derivation: cCompleteRenaming_def and set algebra. *)
+(* Proved from cCompleteRenaming_def by set algebra. *)
 lemma cCompleteRenaming_total:
   "Domain (cCompleteRenaming R) = UNIV"
   by (auto simp: cCompleteRenaming_def Domain_def)
@@ -388,7 +392,7 @@ lemma cRename_complete_mono [mono_rule, cyphy_refinement]:
     cRename (cCompleteRenaming R) (P :: 'e cyphyprocess)"
   by (rule ax_rename_relation_mono[OF cCompleteRenaming_total])
 
-(* MP-02 / MP-03 - Local derivation: ax_mp_singleton and ax_mp_union. *)
+(* MP-02 / MP-03 - from ax_mp_singleton and ax_mp_union. *)
 lemma cExtChoice_as_indexed:
   "cExtChoice P Q = cExtChoiceIdx {False, True}
     (\<lambda>i. if i then Q else P :: 'e cyphyprocess)"
@@ -398,7 +402,7 @@ proof -
   then show ?thesis by (metis insert_is_Un)
 qed
 
-(* GC-01 / MP-02 / MP-03 - Local derivation: ax_guard_indexed and cExtChoice_as_indexed; RC counterpart Guard_Det_Guard_to_GlobalDet. *)
+(* GC-01 / MP-02 / MP-03 - from ax_guard_indexed and cExtChoice_as_indexed; RC counterpart Guard_Det_Guard_to_GlobalDet. *)
 lemma cGuardedChoice_as_indexed:
   "cExtChoice (cBoolGuard b P) (cBoolGuard c Q) =
     cExtChoiceIdx {i \<in> {False, True}. if i then c else b}
@@ -411,16 +415,16 @@ proof -
     by (simp only: cExtChoice_as_indexed E ax_guard_indexed)
 qed
 
-(* Local monotonicity derivation: cExtChoiceIdx_mono and cEventPrefix_mono. *)
+(* Proved from cExtChoiceIdx_mono and cEventPrefix_mono. *)
 lemma cMprefix_mono [cyphy_refinement]:
   "(\<And>e. e \<in> A \<Longrightarrow> P e \<le> Q e) \<Longrightarrow> cMprefix A P \<le> cMprefix A Q"
   unfolding cMprefix_def by (intro cExtChoiceIdx_mono cEventPrefix_mono)
 
-(* Local Boolean-guard derivation: cBoolGuard_def. *)
+(* Proved from cBoolGuard_def. *)
 lemma cBoolGuard_mono [cyphy_refinement]: "P \<le> Q \<Longrightarrow> cBoolGuard b P \<le> cBoolGuard b Q"
   by (simp add: cBoolGuard_def)
 
-(* CO-04 - Local unit-state instance: ax_guard_constant. *)
+(* CO-04 - unit-state instance of ax_guard_constant. *)
 lemma cGuard_unit_bool:
   fixes b :: "unit \<Rightarrow> bool" and P :: "'e cyphyprocess"
   shows "cGuard b P = cBoolGuard (b ()) P"
@@ -431,41 +435,41 @@ proof -
     by (simp only: ax_guard_constant)
 qed
 
-(* CO-04 - Local derivation: cGuard_unit_bool and cBoolGuard_mono. *)
+(* CO-04 - from cGuard_unit_bool and cBoolGuard_mono. *)
 lemma cGuard_unit_mono [mono_rule, cyphy_refinement]:
   fixes b :: "unit \<Rightarrow> bool" and P Q :: "'e cyphyprocess"
   shows "P \<le> Q \<Longrightarrow> cGuard b P \<le> cGuard b Q"
   by (simp only: cGuard_unit_bool; rule cBoolGuard_mono)
 
-(* External choice - UCS p. 24, (2.1) *)
+(* EC-02 - UCS p. 24, (2.1) *)
 lemma cExtChoice_same_bound [cyphy_refinement]:
   "P \<le> X \<Longrightarrow> Q \<le> X \<Longrightarrow> cExtChoice P Q \<le> X"
   by (metis ax_cExtChoice_idem cExtChoice_mono)
 
-(* MP-04 - Local derivation: ax_mp_constant and cExtChoiceIdx_mono; RC counterpart mono_GlobalDet_FD_const. *)
+(* MP-04 - from ax_mp_constant and cExtChoiceIdx_mono; RC counterpart mono_GlobalDet_FD_const. *)
 lemma cExtChoiceIdx_bound [cyphy_refinement]:
   "I \<noteq> {} \<Longrightarrow> (\<And>i. i \<in> I \<Longrightarrow> P i \<le> X) \<Longrightarrow>
     cExtChoiceIdx I P \<le> (X :: 'e cyphyprocess)"
   by (metis ax_mp_constant cExtChoiceIdx_mono)
 
-(* GC-01 / MP-04 - Local derivation: ax_guard_indexed and cExtChoiceIdx_bound; RC counterpart mono_GlobalDet_Guard_FD_const. *)
+(* GC-01 / MP-04 - from ax_guard_indexed and cExtChoiceIdx_bound; RC counterpart mono_GlobalDet_Guard_FD_const. *)
 lemma cExtChoiceIdx_guard_bound [cyphy_refinement]:
   "(\<exists>i\<in>I. b i) \<Longrightarrow> (\<And>i. i \<in> I \<Longrightarrow> b i \<Longrightarrow> P i \<le> X) \<Longrightarrow>
     cExtChoiceIdx I (\<lambda>i. cBoolGuard (b i) (P i)) \<le> (X :: 'e cyphyprocess)"
   by (simp only: ax_guard_indexed; rule cExtChoiceIdx_bound; auto)
 
-(* Local lattice derivation: Isabelle/HOL SUP_mono and cGlobalNdet_def. *)
+(* Proved from Isabelle/HOL SUP_mono and cGlobalNdet_def. *)
 lemma cGlobalNdet_mono [cyphy_refinement]:
   "(\<And>i. i \<in> I \<Longrightarrow> P i \<le> Q i) \<Longrightarrow> cGlobalNdet I P \<le> cGlobalNdet I Q"
   unfolding cGlobalNdet_def by (auto intro: SUP_mono)
 
-(* Local fixed-point derivation: Isabelle/HOL lfp_mono on function space. *)
+(* Proved from Isabelle/HOL lfp_mono on the function space. *)
 lemma cyphy_joint_lfp_mono [cyphy_refinement]:
   "(\<And>X i. F X i \<le> G X i) \<Longrightarrow>
     lfp F i \<le> lfp G i"
   by (rule le_funD, rule lfp_mono, rule le_funI; assumption)
 
-(* CO-01 - Local derivation: ax_input_mprefix, indexed/prefix monotonicity; AFP read_is_GlobalDet_write counterpart. *)
+(* CO-01 - from ax_input_mprefix with indexed-choice and prefix monotonicity; AFP read_is_GlobalDet_write counterpart. *)
 lemma cInputPrefix_unit_mono [mono_rule, cyphy_refinement]:
   fixes b :: "'a \<Rightarrow> unit \<Rightarrow> bool"
     and P Q :: "'a \<Rightarrow> 'e cyphyprocess"
@@ -489,12 +493,12 @@ proof -
         intro cExtChoiceIdx_mono cEventPrefix_mono; auto intro: ordered)
 qed
 
-(* Local channel derivation: evsimple_def, chinst1_def and refinement_prism_build. *)
+(* Proved from evsimple_def, chinst1_def and refinement_prism_build. *)
 lemma evsimple_chinst1:
   "evsimple (chinst1 c v) = build\<^bsub>c\<^esub> v"
   by (simp only: evsimple_def chinst1_def refinement_prism_build)
 
-(* Local prefix-bridge derivation: ax_cSync_event_prefix and evsimple_chinst1. *)
+(* Proved from ax_cSync_event_prefix and evsimple_chinst1. *)
 lemma ax_cSync_chinst1_event_prefix:
   "cSyncPrefix (chinst1 c v) P = cEventPrefix (build\<^bsub>c\<^esub> v) P"
   by (simp only: ax_cSync_event_prefix evsimple_chinst1)
@@ -502,7 +506,7 @@ lemma ax_cSync_chinst1_event_prefix:
 named_theorems cyphy_search_preparation
   \<open>equations preparing an algebraic residual for upstream search\<close>
 
-(* GC-01 / MP-02 / MP-03 - Local derivation: cGuardedChoice_as_indexed, reversed. *)
+(* GC-01 / MP-02 / MP-03 - cGuardedChoice_as_indexed, reversed. *)
 lemma search_bool_filtered_choice [cyphy_search_preparation]:
   fixes P :: "bool \<Rightarrow> 'e cyphyprocess"
   shows "cExtChoiceIdx {i \<in> {False, True}. if i then c else b} P =
@@ -515,7 +519,7 @@ proof -
     by (simp only: branches)
 qed
 
-(* CO-01 - Local identity-prism instance of ax_input_mprefix (AFP read_is_GlobalDet_write counterpart). *)
+(* CO-01 - identity-prism instance of ax_input_mprefix; AFP read_is_GlobalDet_write counterpart. *)
 lemma search_mprefix_as_input [cyphy_search_preparation]:
   fixes P :: "'e \<Rightarrow> 'e cyphyprocess"
   shows "cMprefix A P =
@@ -531,18 +535,18 @@ proof -
     using input by (simp add: prism_id_def refinement_prism_build cMprefix_def)
 qed
 
-(* Local prefix-bridge derivation: ax_cOutput_event_prefix and identity-prism definitions. *)
+(* Proved from ax_cOutput_event_prefix and the identity-prism definitions. *)
 lemma event_prefix_as_output [cyphy_search_preparation]:
   "cEventPrefix e P = cOutputPrefix prism_id (\<lambda>_. e) P"
   by (simp only: ax_cOutput_event_prefix prism_id_def refinement_prism_build id_apply)
 
-(* MP-02 / MP-03 - Local derivation: ax_mp_union and ax_mp_singleton. *)
+(* MP-02 / MP-03 - from ax_mp_union and ax_mp_singleton. *)
 lemma search_indexed_insert [cyphy_search_preparation]:
   "cExtChoiceIdx (insert i I) P =
     cExtChoice (P i) (cExtChoiceIdx I P :: 'e cyphyprocess)"
   using ax_mp_union[of "{i}" I P] by (simp add: ax_mp_singleton)
 
-(* MP-02 / MP-03 - Local derivation: cMprefix_def and search_indexed_insert. *)
+(* MP-02 / MP-03 - from cMprefix_def and search_indexed_insert. *)
 lemma search_mprefix_insert [cyphy_search_preparation]:
   "cMprefix (insert e A) P =
     cExtChoice (cEventPrefix e (P e)) (cMprefix A P :: 'e cyphyprocess)"
