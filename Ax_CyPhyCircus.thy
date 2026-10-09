@@ -6,6 +6,16 @@ begin
 unbundle UTP_Syntax
 unbundle Circus_Syntax
 
+(* References: UCS = A. W. Roscoe, Understanding Concurrent Systems (Springer, 2010);
+   TPC = A. W. Roscoe, The Theory and Practice of Concurrency (Prentice Hall, 1998);
+   Oliveira = Formal Derivation of State-Rich Reactive Programs using Circus, extended York thesis (2005);
+   Wei = Operational Semantics for Circus Time (2013);
+   UTP = C. A. R. Hoare and He Jifeng, Unifying Theories of Programming (Prentice Hall, 1998);
+   HOL-CSP = AFP HOL-CSP/HOL-CSPM; additional references: RC_HOL-CSP,
+   https://github.com/laila-fangyan/RoboChart-Deadlock-HOLCSP-AG.
+   Law identifiers follow RoboSAPIENS D1.4, Table "Implemented Circus step laws";
+   (derived) marks the laws that table lists as derived. *)
+
 section \<open> Types and Constants \<close>
 
 typedecl ('e, 's) cyphyaction
