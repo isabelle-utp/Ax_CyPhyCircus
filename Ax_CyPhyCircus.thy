@@ -99,13 +99,19 @@ section \<open> Axioms \<close>
 
 subsection \<open>Monotonicity\<close>
 
-(* MO-01 - Sequence, external choice and the three prefixes are monotonic in their action arguments. *)
+(* MO-01 - Sequence, external choice, the three prefixes, interrupt, hiding, parallel composition,
+   renaming and guards are monotonic in their action arguments. *)
 axiomatization where
   cSeq_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cSeq P\<^sub>1 Q\<^sub>1 \<le> cSeq P\<^sub>2 Q\<^sub>2" and
   cExtChoice_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cExtChoice P\<^sub>1 Q\<^sub>1 \<le> cExtChoice P\<^sub>2 Q\<^sub>2" and
   cSync_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2 \<rbrakk> \<Longrightarrow> a \<rightarrow> P\<^sub>1 \<le> a \<rightarrow> P\<^sub>2" and
   cInput_mono [mono_rule]: "\<lbrakk> \<And> x::'a. P x \<le> Q x \<rbrakk> \<Longrightarrow> c\<^bold>?x \<rightarrow> P x \<le> c\<^bold>?x \<rightarrow> Q x" and
-  cOutput_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2 \<rbrakk> \<Longrightarrow> c\<^bold>!e \<rightarrow> P\<^sub>1 \<le> c\<^bold>!e \<rightarrow> P\<^sub>2"
+  cOutput_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2 \<rbrakk> \<Longrightarrow> c\<^bold>!e \<rightarrow> P\<^sub>1 \<le> c\<^bold>!e \<rightarrow> P\<^sub>2" and
+  cInterrupt_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cInterrupt P\<^sub>1 Q\<^sub>1 \<le> cInterrupt P\<^sub>2 Q\<^sub>2" and
+  cHide_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2 \<rbrakk> \<Longrightarrow> cHide P\<^sub>1 A \<le> cHide P\<^sub>2 A" and
+  cParallelAct_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cParallelAct ns\<^sub>1 ns\<^sub>2 cs P\<^sub>1 Q\<^sub>1 \<le> cParallelAct ns\<^sub>1 ns\<^sub>2 cs P\<^sub>2 Q\<^sub>2" and
+  cRename_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2 \<rbrakk> \<Longrightarrow> cRename R P\<^sub>1 \<le> cRename R P\<^sub>2" and
+  cGuard_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2 \<rbrakk> \<Longrightarrow> cGuard b P\<^sub>1 \<le> cGuard b P\<^sub>2"
 for P\<^sub>1 P\<^sub>2 Q\<^sub>1 Q\<^sub>2 :: "('e, 's) cyphyaction"
 and P Q :: "'a \<Rightarrow> ('e, 's) cyphyaction"
 
