@@ -41,7 +41,7 @@ definition atan2 :: "real \<Rightarrow> real \<Rightarrow> real" where
     0)"
 
 definition vec_angle :: "real vec[2] \<Rightarrow> real" where
-"vec_angle v = atan2 (v$0) (v$1)"
+"vec_angle v = atan2 (v$1) (v$0)"
 
 subsection \<open> Channels \<close>
 
@@ -80,7 +80,7 @@ consts
 subsubsection \<open> Environment State \<close>
 
 alphabet EnvironmentState = 
-  linAccel      :: real
+  linAccel   :: real
   pos        :: "real vec[2]"
   orient     :: "real vec[2]"
   linVel     :: real
@@ -110,10 +110,10 @@ subsubsection \<open> Update Actions that interrupt Robot Movement \<close>
 
 definition
   "CollisionDetection = 
-    ((\<exists> obs \<in> obstaclePositions. norm (pos - obs) < collisionRadius) \<^bold>&
+    ((\<exists> obs \<in> obstaclePositions. \<parallel>pos - obs\<parallel> < collisionRadius) \<^bold>&
       (linVel, linAccel) := (0, 0))
     \<box> 
-    ((\<not> (\<exists> obs \<in> obstaclePositions. norm (pos - obs) < collisionRadius)) \<^bold>&
+    ((\<not> (\<exists> obs \<in> obstaclePositions. \<parallel>pos - obs\<parallel> < collisionRadius)) \<^bold>&
       Skip)"
 
 definition "EnvironmentUpdate = CollisionDetection"
