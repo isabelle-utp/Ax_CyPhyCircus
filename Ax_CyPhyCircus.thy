@@ -40,6 +40,12 @@ instance
      (simp_all add: ref_by_cyphyaction_def sref_by_cyphyaction_def dual_order.strict_iff_not)
 end
 
+(* Hoare triples -- ensures all reachable states of the action satisfy the spec *)
+axiomatization
+  cPrePost       :: "('s \<Rightarrow> bool) \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('s \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool"
+
+adhoc_overloading hoare_rel \<rightleftharpoons> cPrePost
+
 section \<open> IsaCyPhyCircus Operators \<close>
 
 axiomatization
@@ -331,6 +337,28 @@ axiomatization where
   ax_guard_indexed [cyphy_normalisation]:
     "cExtChoiceIdx I (\<lambda>i. cBoolGuard (b i) (P i)) =
       cExtChoiceIdx {i \<in> I. b i} (P :: 'i \<Rightarrow> 'e cyphyprocess)"
+
+(* Differential induction, cut, and weakening *)
+axiomatization where
+  cEvolve_dInduct: "diff_inv_on a (\<lambda> _. f) G (Collect ((\<le>) 0))\<^sub>e UNIV 0 (I)\<^sub>e \<Longrightarrow> H{I} cEvolve a f G {I}" and
+  cEvolve_dCut: "\<lbrakk> H{P} cEvolve a f (G)\<^sub>e {P}; H{Q} cEvolve a f (G \<and> P)\<^sub>e {Q} \<rbrakk> \<Longrightarrow> H{P \<and> Q} cEvolve a f (G)\<^sub>e {P \<and> Q}" and
+  cEvolve_dWeaken: "\<lbrakk> `G \<longrightarrow> Q` \<rbrakk> \<Longrightarrow> H{P} cEvolve a f (G)\<^sub>e {Q}"
+  for a :: "'a::real_normed_vector \<Longrightarrow> 's" and f :: "'s \<Rightarrow> 's"
+
+method dInduct = ((simp only: SEXP_apply named_expr_defs)?; (rule_tac cEvolve_dInduct); 
+    rule_tac lderiv_rules; 
+    simp add: framed_derivs ldifferentiable closure usubst unrest_ssubst unrest usubst_eval)
+
+method dCut = (rule cEvolve_dCut)
+
+method dWeaken = (rule_tac cEvolve_dWeaken; expr_simp; auto simp add: field_simps)
+
+method dInduct_mega uses facts = 
+  ( fact facts \<comment> \<open> (1) Try any facts we have provided \<close>
+  | (dWeaken ; force) \<comment> \<open> (2) Try differential weakening \<close>
+  | dCut \<comment> \<open> (4) Try differential cut  \<close>
+  | (dInduct) \<comment> \<open> (5) Try differential induction \<close>
+  )+
 
 section \<open>Derived laws and further axioms\<close>
 
