@@ -225,21 +225,23 @@ definition "RoboWorld = (Environment \<lbrakk> getSetChannels \<rbrakk> Mapping)
 
 subsection \<open> Verification \<close>
 
-definition \<Psi>\<^sub>1 :: "(real ^ 2) \<Rightarrow> (real ^ 2 ^ 'n) \<Rightarrow> real \<Rightarrow> real \<Rightarrow> real^2 \<Rightarrow> EnvironmentState \<Rightarrow> bool" where
- "\<Psi>\<^sub>1 p\<^sub>0 ob\<^sub>0 a\<^sub>0 s\<^sub>0 d\<^sub>0 =
+definition \<Psi>\<^sub>1 :: "(real ^ 2) \<Rightarrow> real \<Rightarrow> real \<Rightarrow> real^2 \<Rightarrow> EnvironmentState \<Rightarrow> bool" where
+ "\<Psi>\<^sub>1 p\<^sub>0 a\<^sub>0 s\<^sub>0 d\<^sub>0 =
   (linAccel = a\<^sub>0 \<and> 0 \<le> s\<^sub>0 \<and> angRadius = 0 \<and> angVel = 0 \<and> orient = d\<^sub>0
-   \<and> 0 \<le> linVel \<and> 0 \<le> stepTimer  \<and> \<parallel>orient\<parallel>\<^sup>2 = 1 \<and> \<parallel>orient\<parallel> = 1 
-   \<and> linVel = s\<^sub>0 + linAccel * stepTimer)\<^sup>e"
+   \<and> 0 \<le> linVel \<and> 0 \<le> stepTimer  \<and> \<parallel>orient\<parallel>\<^sup>2 = 1 
+   \<and> linVel = s\<^sub>0 + linAccel * stepTimer 
+   \<and> pos = p\<^sub>0 + (s\<^sub>0 * stepTimer + a\<^sub>0 * stepTimer\<^sup>2 / 2) *\<^sub>R d\<^sub>0
+    \<and> \<parallel>pos - p\<^sub>0\<parallel> \<le> stepTimer * (linVel - linAccel * stepTimer/2))\<^sup>e"
 
 expr_constructor \<Psi>\<^sub>1
 
-lemma \<Psi>\<^sub>1_invariant: "H{\<Psi>\<^sub>1 p\<^sub>0 ob\<^sub>0 a\<^sub>0 s\<^sub>0 d\<^sub>0} Movement {\<Psi>\<^sub>1 p\<^sub>0 ob\<^sub>0 a\<^sub>0 s\<^sub>0 d\<^sub>0}"
+lemma \<Psi>\<^sub>1_invariant: "H{\<Psi>\<^sub>1 p\<^sub>0 a\<^sub>0 s\<^sub>0 d\<^sub>0} Movement {\<Psi>\<^sub>1 p\<^sub>0 a\<^sub>0 s\<^sub>0 d\<^sub>0}"
   apply (simp add: Movement_def \<Psi>\<^sub>1_def)
   apply dInduct_mega
   apply dWeaken
-  apply (metis landau_o.R_linear more_arith_simps(6) mult_eq_1 norm_ge_zero
-      ordered_comm_semiring_class.comm_mult_left_mono)
-  apply dInduct_mega
+  apply (metis (no_types, lifting) abs_norm_cancel abs_of_nonneg add.commute add.left_commute 
+        add_nonneg_nonneg comm_monoid_mult_class.mult_1 distrib_left mult_2_right order.refl
+        real_sqrt_mult real_sqrt_mult_self zero_le_mult_iff)
   done
 
 end
