@@ -101,6 +101,24 @@ adhoc_overloading
   Timeout \<rightleftharpoons> cTimeout and
   InterruptCond \<rightleftharpoons> cInterruptCond
 
+subsection \<open> Derived operators \<close>
+
+(* Prefix choice *)
+definition cPrefixChoice :: "'e set \<Rightarrow> ('e \<Rightarrow> ('e, 's) cyphyaction) \<Rightarrow> ('e, 's) cyphyaction" where
+  "cPrefixChoice A K = cExtChoiceIdx A (\<lambda>e. cEventPrefix e (K e))"
+
+(* Indexed internal choice *)
+definition cIntChoiceIdx :: "'i set \<Rightarrow> ('i \<Rightarrow> ('e, 's) cyphyaction) \<Rightarrow> ('e, 's) cyphyaction" where
+  "cIntChoiceIdx I P = (if I = {} then cStop else Sup (P ` I))"
+
+(* Boolean guard *)
+definition cBoolGuard :: "bool \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cBoolGuard b P = (if b then P else cStop)"
+
+(* Sliding choice *)
+definition cSlidingChoice :: "('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cSlidingChoice P Q = sup (cExtChoice P Q) Q"
+
 section \<open> Axioms \<close>
 
 subsection \<open>Monotonicity\<close>
@@ -198,38 +216,26 @@ named_theorems cyphy_normalisation
 named_theorems cyphy_refinement
   \<open>conditional compositional refinement rules\<close>
 
-definition cMprefix :: "'e set \<Rightarrow> ('e \<Rightarrow> ('e, 's) cyphyaction) \<Rightarrow> ('e, 's) cyphyaction" where
-  "cMprefix A K = cExtChoiceIdx A (\<lambda>e. cEventPrefix e (K e))"
-
-definition cGlobalNdet :: "'i set \<Rightarrow> ('i \<Rightarrow> ('e, 's) cyphyaction) \<Rightarrow> ('e, 's) cyphyaction" where
-  "cGlobalNdet I P = (if I = {} then cStop else Sup (P ` I))"
-
-definition cBoolGuard :: "bool \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
-  "cBoolGuard b P = (if b then P else cStop)"
-
-definition cSliding :: "('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
-  "cSliding P Q = sup (cExtChoice P Q) Q"
-
 (* MP-01 - UCS p. 27, (2.15) *)
 axiomatization where
   ax_mp_empty: "cExtChoiceIdx {} P = (cStop :: 'e cyphyprocess)"
 
 (* MP-05 - UCS p. 27, (2.14); TPC p. 32, (1.14) *)
 axiomatization where
-  ax_mp_choice: "cExtChoice (cMprefix A P) (cMprefix B Q) =
-    cMprefix (A \<union> B) (\<lambda>e. if e \<in> A \<inter> B then sup (P e) (Q e)
+  ax_mp_choice: "cExtChoice (cPrefixChoice A P) (cPrefixChoice B Q) =
+    cPrefixChoice (A \<union> B) (\<lambda>e. if e \<in> A \<inter> B then sup (P e) (Q e)
       else if e \<in> A then P e else Q e :: 'e cyphyprocess)"
 
 (* MP-06 - UCS p. 27, (2.14) *)
 axiomatization where
-  ax_mp_indexed: "cExtChoiceIdx I (\<lambda>i. cMprefix (A i) (P i)) =
-    cMprefix (\<Union>i\<in>I. A i)
-      (\<lambda>e. cGlobalNdet {i \<in> I. e \<in> A i} (\<lambda>i. P i e :: 'e cyphyprocess))"
+  ax_mp_indexed: "cExtChoiceIdx I (\<lambda>i. cPrefixChoice (A i) (P i)) =
+    cPrefixChoice (\<Union>i\<in>I. A i)
+      (\<lambda>e. cIntChoiceIdx {i \<in> I. e \<in> A i} (\<lambda>i. P i e :: 'e cyphyprocess))"
 
 (* MP-07 - UCS p. 133, (7.4) *)
 axiomatization where
-  ax_mp_seq: "cSeq (cMprefix A P) Q =
-    cMprefix A (\<lambda>e. cSeq (P e) (Q :: 'e cyphyprocess))"
+  ax_mp_seq: "cSeq (cPrefixChoice A P) Q =
+    cPrefixChoice A (\<lambda>e. cSeq (P e) (Q :: 'e cyphyprocess))"
 
 (* CO-02 - UCS p. 133, (7.4) *)
 axiomatization where
@@ -251,15 +257,15 @@ axiomatization where
 (* HI-01 - UCS p. 96, (5.6), disjoint case; TPC p. 81, (3.6) *)
 axiomatization where
   ax_hide_mprefix_disjoint:
-    "A \<inter> S = {} \<Longrightarrow> cHide (cMprefix A P) S =
-      cMprefix A (\<lambda>e. cHide (P e :: 'e cyphyprocess) S)"
+    "A \<inter> S = {} \<Longrightarrow> cHide (cPrefixChoice A P) S =
+      cPrefixChoice A (\<lambda>e. cHide (P e :: 'e cyphyprocess) S)"
 
 (* HI-02 - UCS p. 96, (5.6), shared case; TPC p. 81, (3.6) *)
 axiomatization where
   ax_hide_mprefix_shared:
-    "A \<inter> S \<noteq> {} \<Longrightarrow> cHide (cMprefix A P) S =
-      cSliding (cMprefix (A - S) (\<lambda>e. cHide (P e) S))
-        (cGlobalNdet (A \<inter> S) (\<lambda>e. cHide (P e :: 'e cyphyprocess) S))"
+    "A \<inter> S \<noteq> {} \<Longrightarrow> cHide (cPrefixChoice A P) S =
+      cSlidingChoice (cPrefixChoice (A - S) (\<lambda>e. cHide (P e) S))
+        (cIntChoiceIdx (A \<inter> S) (\<lambda>e. cHide (P e :: 'e cyphyprocess) S))"
 
 (* HI-03 - Oliveira p. 209, C.120; AFP HOL-CSP Hiding_SKIP *)
 axiomatization where
@@ -278,8 +284,8 @@ axiomatization where
 (* IN-01 - UCS p. 139, (7.5) *)
 axiomatization where
   ax_interrupt_mprefix:
-    "cInterrupt (cMprefix A P) Q =
-      cExtChoice Q (cMprefix A (\<lambda>e. cInterrupt (P e) (Q :: 'e cyphyprocess)))"
+    "cInterrupt (cPrefixChoice A P) Q =
+      cExtChoice Q (cPrefixChoice A (\<lambda>e. cInterrupt (P e) (Q :: 'e cyphyprocess)))"
 
 (* RF-06 - Oliveira p. 71, Section 4.1 *)
 axiomatization where
@@ -385,28 +391,28 @@ definition cCompleteRenaming :: "('e \<times> 'e) set \<Rightarrow> ('e \<times>
   "cCompleteRenaming R = R \<union> {(e,e) |e. e \<notin> Domain R}"
 
 (* MP-01 - UCS p. 27, (2.15) *)
-lemma cMprefix_empty [cyphy_normalisation]:
-  "cMprefix {} P = (cStop :: 'e cyphyprocess)"
-  by (simp only: cMprefix_def ax_mp_empty)
+lemma cPrefixChoice_empty [cyphy_normalisation]:
+  "cPrefixChoice {} P = (cStop :: 'e cyphyprocess)"
+  by (simp only: cPrefixChoice_def ax_mp_empty)
 
 (* HI-04 (derived) - UCS p. 96, (5.6); p. 27, (2.15); from HI-01 and MP-01 *)
 lemma ax_hide_stop [cyphy_normalisation]:
   "cHide cStop S = (cStop :: 'e cyphyprocess)"
   using ax_hide_mprefix_disjoint[of "{}" S "\<lambda>_. cStop"]
-  by (simp add: cMprefix_empty)
+  by (simp add: cPrefixChoice_empty)
 
-(* MP-02 - from cMprefix_def and ax_mp_singleton; AFP GlobalDet_unit counterpart. *)
-lemma cMprefix_singleton [cyphy_normalisation]:
-  "cMprefix {e} P = cEventPrefix e (P e :: 'e cyphyprocess)"
-  by (simp only: cMprefix_def ax_mp_singleton)
+(* MP-02 - from cPrefixChoice_def and ax_mp_singleton; AFP GlobalDet_unit counterpart. *)
+lemma cPrefixChoice_singleton [cyphy_normalisation]:
+  "cPrefixChoice {e} P = cEventPrefix e (P e :: 'e cyphyprocess)"
+  by (simp only: cPrefixChoice_def ax_mp_singleton)
 
-(* Proved from cGlobalNdet_def and the complete lattice. *)
-lemma cGlobalNdet_empty [cyphy_normalisation]: "cGlobalNdet {} P = cStop"
-  by (simp add: cGlobalNdet_def)
+(* Proved from cIntChoiceIdx_def and the complete lattice. *)
+lemma cIntChoiceIdx_empty [cyphy_normalisation]: "cIntChoiceIdx {} P = cStop"
+  by (simp add: cIntChoiceIdx_def)
 
-(* Proved from cGlobalNdet_def and the complete lattice. *)
-lemma cGlobalNdet_singleton [cyphy_normalisation]: "cGlobalNdet {i} P = P i"
-  by (simp add: cGlobalNdet_def)
+(* Proved from cIntChoiceIdx_def and the complete lattice. *)
+lemma cIntChoiceIdx_singleton [cyphy_normalisation]: "cIntChoiceIdx {i} P = P i"
+  by (simp add: cIntChoiceIdx_def)
 
 (* CO-04 - Oliveira p. 199, C.67; Boolean guard *)
 lemma cBoolGuard_true [cyphy_normalisation]: "cBoolGuard True P = P"
@@ -421,8 +427,8 @@ lemma cBoolGuard_true [cyphy_normalisation]: "cBoolGuard True P = P"
 
 (* MP-01 - UCS p. 27, (2.15) *)
 lemma cBoolGuard_mprefix [cyphy_normalisation]:
-  "cBoolGuard b (cMprefix A P) = cMprefix {e \<in> A. b} (P :: 'e \<Rightarrow> 'e cyphyprocess)"
-  by (cases b; simp add: cBoolGuard_def cMprefix_empty)
+  "cBoolGuard b (cPrefixChoice A P) = cPrefixChoice {e \<in> A. b} (P :: 'e \<Rightarrow> 'e cyphyprocess)"
+  by (cases b; simp add: cBoolGuard_def cPrefixChoice_empty)
 
 (* Proved from cCompleteRenaming_def by set algebra. *)
 lemma cCompleteRenaming_total:
@@ -460,9 +466,9 @@ proof -
 qed
 
 (* Proved from cExtChoiceIdx_mono and cEventPrefix_mono. *)
-lemma cMprefix_mono [cyphy_refinement]:
-  "(\<And>e. e \<in> A \<Longrightarrow> P e \<le> Q e) \<Longrightarrow> cMprefix A P \<le> cMprefix A Q"
-  unfolding cMprefix_def by (intro cExtChoiceIdx_mono cEventPrefix_mono)
+lemma cPrefixChoice_mono [cyphy_refinement]:
+  "(\<And>e. e \<in> A \<Longrightarrow> P e \<le> Q e) \<Longrightarrow> cPrefixChoice A P \<le> cPrefixChoice A Q"
+  unfolding cPrefixChoice_def by (intro cExtChoiceIdx_mono cEventPrefix_mono)
 
 (* Proved from cBoolGuard_def. *)
 lemma cBoolGuard_mono [cyphy_refinement]: "P \<le> Q \<Longrightarrow> cBoolGuard b P \<le> cBoolGuard b Q"
@@ -502,10 +508,10 @@ lemma cExtChoiceIdx_guard_bound [cyphy_refinement]:
     cExtChoiceIdx I (\<lambda>i. cBoolGuard (b i) (P i)) \<le> (X :: 'e cyphyprocess)"
   by (simp only: ax_guard_indexed; rule cExtChoiceIdx_bound; auto)
 
-(* Proved from Isabelle/HOL SUP_mono and cGlobalNdet_def. *)
-lemma cGlobalNdet_mono [cyphy_refinement]:
-  "(\<And>i. i \<in> I \<Longrightarrow> P i \<le> Q i) \<Longrightarrow> cGlobalNdet I P \<le> cGlobalNdet I Q"
-  unfolding cGlobalNdet_def by (auto intro: SUP_mono)
+(* Proved from Isabelle/HOL SUP_mono and cIntChoiceIdx_def. *)
+lemma cIntChoiceIdx_mono [cyphy_refinement]:
+  "(\<And>i. i \<in> I \<Longrightarrow> P i \<le> Q i) \<Longrightarrow> cIntChoiceIdx I P \<le> cIntChoiceIdx I Q"
+  unfolding cIntChoiceIdx_def by (auto intro: SUP_mono)
 
 (* Proved from Isabelle/HOL lfp_mono on the function space. *)
 lemma cyphy_joint_lfp_mono [cyphy_refinement]:
@@ -566,7 +572,7 @@ qed
 (* CO-01 - identity-prism instance of ax_input_mprefix; AFP read_is_GlobalDet_write counterpart. *)
 lemma search_mprefix_as_input [cyphy_search_preparation]:
   fixes P :: "'e \<Rightarrow> 'e cyphyprocess"
-  shows "cMprefix A P =
+  shows "cPrefixChoice A P =
     cInputPrefix prism_id A (\<lambda>e. (\<lambda>_. True, P e))"
 proof -
   have injective: "inj_on (prism_build (prism_id :: ('e, 'e) channel)) A"
@@ -576,7 +582,7 @@ proof -
       (\<lambda>e. cEventPrefix (prism_build prism_id e) (P e))"
     by (rule ax_input_mprefix[OF injective])
   show ?thesis
-    using input by (simp add: prism_id_def refinement_prism_build cMprefix_def)
+    using input by (simp add: prism_id_def refinement_prism_build cPrefixChoice_def)
 qed
 
 (* Proved from ax_cOutput_event_prefix and the identity-prism definitions. *)
@@ -590,22 +596,22 @@ lemma search_indexed_insert [cyphy_search_preparation]:
     cExtChoice (P i) (cExtChoiceIdx I P :: 'e cyphyprocess)"
   using ax_mp_union[of "{i}" I P] by (simp add: ax_mp_singleton)
 
-(* MP-02 / MP-03 - from cMprefix_def and search_indexed_insert. *)
+(* MP-02 / MP-03 - from cPrefixChoice_def and search_indexed_insert. *)
 lemma search_mprefix_insert [cyphy_search_preparation]:
-  "cMprefix (insert e A) P =
-    cExtChoice (cEventPrefix e (P e)) (cMprefix A P :: 'e cyphyprocess)"
-  by (simp only: cMprefix_def search_indexed_insert)
+  "cPrefixChoice (insert e A) P =
+    cExtChoice (cEventPrefix e (P e)) (cPrefixChoice A P :: 'e cyphyprocess)"
+  by (simp only: cPrefixChoice_def search_indexed_insert)
 
 lemmas [cyphy_refinement] = cSeq_mono cExtChoice_mono cEventPrefix_mono
   cSync_mono cInput_mono cOutput_mono cExtChoiceIdx_mono ax_hide_mono ax_interrupt_mono
 
-lemmas [mono_rule] = cMprefix_mono cBoolGuard_mono cGlobalNdet_mono ax_hide_mono ax_interrupt_mono
+lemmas [mono_rule] = cPrefixChoice_mono cBoolGuard_mono cIntChoiceIdx_mono ax_hide_mono ax_interrupt_mono
 
 lemmas [cyphy_normalisation] = ax_mp_empty ax_mp_singleton ax_mp_seq
   ax_input_seq ax_output_seq ax_input_mprefix ax_mp_choice ax_mp_indexed
   cGuardedChoice_as_indexed ax_hide_mprefix_disjoint ax_hide_mprefix_shared ax_interrupt_mprefix
 
-lemmas [cyphy_search_preparation] = ax_mp_empty cMprefix_empty
+lemmas [cyphy_search_preparation] = ax_mp_empty cPrefixChoice_empty
 
 declare [[literal_variables]]
 
