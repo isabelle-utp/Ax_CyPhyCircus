@@ -13,6 +13,8 @@ unbundle Circus_Syntax
    UTP = C. A. R. Hoare and He Jifeng, Unifying Theories of Programming (Prentice Hall, 1998);
    HOL-CSP = AFP HOL-CSP/HOL-CSPM; additional references: RC_HOL-CSP,
    https://github.com/laila-fangyan/RoboChart-Deadlock-HOLCSP-AG.
+   tick-tock-CSP = Isabelle mechanisation, https://github.com/UoY-RoboStar/tick-tock-CSP;
+   core_timed.csp = RoboTool timed CSP library, robochart-csp-gen, lib/semantics/timed/core_timed.csp.
    Law identifiers follow RoboSAPIENS D1.4, Table "Implemented Circus step laws";
    (derived) marks the laws that table lists as derived. *)
 
@@ -1048,20 +1050,20 @@ axiomatization where
 
 subsection \<open>Maximal progress and priority\<close>
 
-(* PR-02 - Wei p. 15, (40); UCS p. 340 *)
+(* PR-02 - Wei p. 15, (40) *)
 axiomatization where
   ax_prioritise_hide:
     "cPrioritise V (cHide P H) =
       cHide (cPrioritise (V \<union> H) (P :: 'e cyphyprocess)) H"
 
-(* PR-05 - UCS p. 488; Wei p. 15, (46), (47) *)
+(* PR-05 - UCS p. 488; robochart-csp-gen core_timed.csp, TimeOut_1 *)
 axiomatization where
   ax_prioritise_initialTimeout1_disjoint:
     "A \<inter> V = {} \<Longrightarrow> cPrioritise V (cInitialTimeout1 (cPrefixChoice A P) Q) =
       cInitialTimeout1 (cPrefixChoice A (\<lambda>e. cPrioritise V (P e)))
         (cPrioritise V (Q :: 'e cyphyprocess))"
 
-(* PR-06 - UCS p. 488; tick-tock-CSP FL Pri_ExtChoice_two_prefixes *)
+(* PR-06 - tick-tock-CSP FL Pri_ExtChoice_two_prefixes; robochart-csp-gen core_timed.csp, TimeOut_1 and StartBy *)
 axiomatization where
   ax_prioritise_initialTimeout1_urgent:
     "A \<inter> V \<noteq> {} \<Longrightarrow> cPrioritise V (cInitialTimeout1 (cPrefixChoice A P) Q) =
