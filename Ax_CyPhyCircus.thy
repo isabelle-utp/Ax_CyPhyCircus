@@ -78,6 +78,7 @@ axiomatization
 
 axiomatization
   cException       :: "('e, 's) cyphyaction \<Rightarrow> 'e set \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
+  cPrioritise      :: "'e set \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
   cInitialTimeout1 :: "('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
   cStartDeadline   :: "nat \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction"
 
@@ -1044,6 +1045,27 @@ axiomatization where
   ax_startDeadline_unit_mono [mono_rule, cyphy_refinement]:
     "P' \<le> P \<Longrightarrow>
       cStartDeadline d P' \<le> cStartDeadline d (P :: 'e cyphyprocess)"
+
+subsection \<open>Maximal progress and priority\<close>
+
+(* PR-02 - Wei p. 15, (40); UCS p. 340 *)
+axiomatization where
+  ax_prioritise_hide:
+    "cPrioritise V (cHide P H) =
+      cHide (cPrioritise (V \<union> H) (P :: 'e cyphyprocess)) H"
+
+(* PR-05 - UCS p. 488; Wei p. 15, (46), (47) *)
+axiomatization where
+  ax_prioritise_initialTimeout1_disjoint:
+    "A \<inter> V = {} \<Longrightarrow> cPrioritise V (cInitialTimeout1 (cPrefixChoice A P) Q) =
+      cInitialTimeout1 (cPrefixChoice A (\<lambda>e. cPrioritise V (P e)))
+        (cPrioritise V (Q :: 'e cyphyprocess))"
+
+(* PR-06 - UCS p. 488; tick-tock-CSP FL Pri_ExtChoice_two_prefixes *)
+axiomatization where
+  ax_prioritise_initialTimeout1_urgent:
+    "A \<inter> V \<noteq> {} \<Longrightarrow> cPrioritise V (cInitialTimeout1 (cPrefixChoice A P) Q) =
+      cStartDeadline 0 (cPrefixChoice A (\<lambda>e. cPrioritise V (P e :: 'e cyphyprocess)))"
 
 declare [[literal_variables]]
 
