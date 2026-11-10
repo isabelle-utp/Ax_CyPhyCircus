@@ -15,6 +15,8 @@ unbundle Circus_Syntax
    https://github.com/laila-fangyan/RoboChart-Deadlock-HOLCSP-AG.
    tick-tock-CSP = Isabelle mechanisation, https://github.com/UoY-RoboStar/tick-tock-CSP;
    core_timed.csp = RoboTool timed CSP library, robochart-csp-gen, lib/semantics/timed/core_timed.csp.
+   FDR manual = https://cocotec.io/fdr/manual, CSPM;
+   RoboChart reference manual = https://robostar.cs.york.ac.uk/publications/techreports/reports/robochart-reference.pdf.
    Law identifiers follow RoboSAPIENS D1.4, Table "Implemented Circus step laws";
    (derived) marks the laws that table lists as derived. *)
 
@@ -81,8 +83,8 @@ axiomatization
 axiomatization
   cException       :: "('e, 's) cyphyaction \<Rightarrow> 'e set \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
   cPrioritise      :: "'e set \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
-  cInitialTimeout1 :: "('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
-  cStartDeadline   :: "nat \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction"
+  cSyncExtChoice   :: "'e set \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" and
+  cSyncInterrupt   :: "'e set \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction"
 
 definition cSkip :: "('e, 's) cyphyaction" where
 "cSkip = cAssigns id"
@@ -131,6 +133,96 @@ definition cSlidingChoice :: "('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphya
 definition cRenameFun :: "('e \<Rightarrow> 'e) \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
   "cRenameFun f P = cRename {(x, f x) |x. True} P"
 
+subsection \<open> Timed operators \<close>
+
+(* The event tock *)
+class tock =
+  fixes cTock :: 'a
+
+(* StopU - RoboChart reference manual, Rules 74 and 89 to 92 *)
+abbreviation StopU :: "('e, 's) cyphyaction" where
+  "StopU \<equiv> cStop"
+
+(* Timed Stop - FDR manual, Timed Sections: TSTOP = tock -> TSTOP *)
+definition cTStop :: "('e::tock, 's) cyphyaction" where
+  "cTStop = lfp (\<lambda>X. cEventPrefix cTock X)"
+
+(* Timed Skip - FDR manual, Timed Sections: TSKIP = SKIP [] tock -> TSKIP *)
+definition cTSkip :: "('e::tock, 's) cyphyaction" where
+  "cTSkip = lfp (\<lambda>X. cExtChoice cSkip (cEventPrefix cTock X))"
+
+(* Timed prefixes - FDR manual, Timed Sections: X = tock -> X [] a -> P *)
+definition cTSyncPrefix :: "(unit, 'e::tock) channel \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cTSyncPrefix c P = lfp (\<lambda>X. cExtChoice (cSyncPrefix c P) (cEventPrefix cTock X))"
+
+definition cTOutputPrefix :: "('a, 'e::tock) channel \<Rightarrow> ('a, 's) expr \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cTOutputPrefix c v P = lfp (\<lambda>X. cExtChoice (cOutputPrefix c v P) (cEventPrefix cTock X))"
+
+definition cTInputPrefix :: "('a, 'e::tock) channel \<Rightarrow> 'a set \<Rightarrow> ('a \<Rightarrow> (('s \<Rightarrow> bool) \<times> ('e, 's) cyphyaction)) \<Rightarrow> ('e, 's) cyphyaction" where
+  "cTInputPrefix c A P = lfp (\<lambda>X. cExtChoice (cInputPrefix c A P) (cEventPrefix cTock X))"
+
+(* Timed external choice - FDR manual, Timed Sections: P [+ {tock} +] Q *)
+definition cTExtChoice :: "('e::tock, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cTExtChoice P Q = cSyncExtChoice {cTock} P Q"
+
+(* Timed guard - FDR manual, Timed Sections: if b then P else TSTOP *)
+definition cTGuard :: "(bool, 's) expr \<Rightarrow> ('e::tock, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cTGuard b P = cExtChoice (cGuard b P) (cGuard (\<lambda>s. \<not> b s) cTStop)"
+
+(* Timed parallel composition - FDR manual, Timed Sections: P [| union({tock},A) |] Q *)
+definition cTParallelAct :: "('a \<Longrightarrow> 's) \<Rightarrow> ('b \<Longrightarrow> 's) \<Rightarrow> 'e::tock set \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cTParallelAct ns\<^sub>1 ns\<^sub>2 A P Q = cParallelAct ns\<^sub>1 ns\<^sub>2 (insert cTock A) P Q"
+
+definition cTParallel :: "'e::tock set \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cTParallel A P Q = cParallel (insert cTock A) P Q"
+
+(* Timed interrupt - FDR manual, Timed Sections: P /+ {tock} +\ Q *)
+definition cTInterrupt :: "('e::tock, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cTInterrupt P Q = cSyncInterrupt {cTock} P Q"
+
+(* Wait - RoboChart reference manual, Rules 94, 97, 98 and 100; FDR manual, WAIT *)
+primrec cWait :: "nat \<Rightarrow> ('e::tock, 's) cyphyaction" where
+  "cWait 0 = cTSkip" |
+  "cWait (Suc d) = cEventPrefix cTock (cWait d)"
+
+(* Timeout by one time unit - RoboChart reference manual, Appendix C.1.1; core_timed.csp, TimeOut_1 *)
+definition cInitialTimeout1 :: "('e::tock, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cInitialTimeout1 P Q = cExtChoice (cSyncExtChoice {cTock} cStop P) (cEventPrefix cTock Q)"
+
+(* Start deadline - core_timed.csp, StartBy *)
+definition cStartDeadline :: "nat \<Rightarrow> ('e::tock, 's) cyphyaction \<Rightarrow> ('e, 's) cyphyaction" where
+  "cStartDeadline d P = cSyncExtChoice {cTock} P (cSeq (cWait d) cStop)"
+
+(* Timed section - FDR manual, Timed Sections *)
+bundle Timed_Section
+begin
+
+no_adhoc_overloading
+  Skip \<rightleftharpoons> cSkip and
+  Stop \<rightleftharpoons> cStop and
+  Guard \<rightleftharpoons> cGuard and
+  ExtChoice \<rightleftharpoons> cExtChoice and
+  InputPrefix \<rightleftharpoons> cInputPrefix and
+  OutputPrefix \<rightleftharpoons> cOutputPrefix and
+  SyncPrefix \<rightleftharpoons> cSyncPrefix and
+  Interrupt \<rightleftharpoons> cInterrupt and
+  Parallel \<rightleftharpoons> cParallel and
+  ParallelAct \<rightleftharpoons> cParallelAct
+
+adhoc_overloading
+  Skip \<rightleftharpoons> cTSkip and
+  Stop \<rightleftharpoons> cTStop and
+  Guard \<rightleftharpoons> cTGuard and
+  ExtChoice \<rightleftharpoons> cTExtChoice and
+  InputPrefix \<rightleftharpoons> cTInputPrefix and
+  OutputPrefix \<rightleftharpoons> cTOutputPrefix and
+  SyncPrefix \<rightleftharpoons> cTSyncPrefix and
+  Interrupt \<rightleftharpoons> cTInterrupt and
+  Parallel \<rightleftharpoons> cTParallel and
+  ParallelAct \<rightleftharpoons> cTParallelAct
+
+end
+
 section \<open> Axioms \<close>
 
 subsection \<open>Monotonicity\<close>
@@ -150,6 +242,12 @@ axiomatization where
   cGuard_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2 \<rbrakk> \<Longrightarrow> cGuard b P\<^sub>1 \<le> cGuard b P\<^sub>2"
 for P\<^sub>1 P\<^sub>2 Q\<^sub>1 Q\<^sub>2 :: "('e, 's) cyphyaction"
 and P Q :: "'a \<Rightarrow> ('e, 's) cyphyaction"
+
+(* MO-01 - Synchronising external choice and synchronising interrupt are monotonic in their action arguments. *)
+axiomatization where
+  cSyncExtChoice_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cSyncExtChoice A P\<^sub>1 Q\<^sub>1 \<le> cSyncExtChoice A P\<^sub>2 Q\<^sub>2" and
+  cSyncInterrupt_mono [mono_rule]: "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cSyncInterrupt A P\<^sub>1 Q\<^sub>1 \<le> cSyncInterrupt A P\<^sub>2 Q\<^sub>2"
+for P\<^sub>1 P\<^sub>2 Q\<^sub>1 Q\<^sub>2 :: "('e, 's) cyphyaction"
 
 subsection \<open> CSP Step Laws \<close>
 
@@ -1038,15 +1136,51 @@ lemma cException_event:
 
 subsection \<open>Discrete initial timeout and start deadline\<close>
 
-(* TM-01 - Wei p. 5, Definition 2; p. 15, (45), Definition 11 *)
-axiomatization where
-  ax_initialTimeout1_unit_mono [mono_rule, cyphy_refinement]:
-    "P' \<le> P \<Longrightarrow> Q' \<le> Q \<Longrightarrow>
-      cInitialTimeout1 P' Q' \<le> cInitialTimeout1 P (Q :: 'e cyphyprocess)" and
-  (* TM-02 - Wei p. 5, Definition 2; p. 16, (53) *)
-  ax_startDeadline_unit_mono [mono_rule, cyphy_refinement]:
-    "P' \<le> P \<Longrightarrow>
-      cStartDeadline d P' \<le> cStartDeadline d (P :: 'e cyphyprocess)"
+(* The timed operators are monotonic in their action arguments: proved from their definitions, MO-01 and
+   Isabelle/HOL lfp_mono. *)
+lemma cTSync_mono [mono_rule]:
+  "P\<^sub>1 \<le> P\<^sub>2 \<Longrightarrow> cTSyncPrefix a P\<^sub>1 \<le> cTSyncPrefix a P\<^sub>2"
+  unfolding cTSyncPrefix_def
+  by (rule lfp_mono, rule cExtChoice_mono, rule cSync_mono, assumption, rule order_refl)
+
+lemma cTInput_mono [mono_rule]:
+  assumes "\<And>x. P x \<le> Q x"
+  shows "cTInputPrefix c UNIV (\<lambda>x. ((True)\<^sub>e, P x)) \<le> cTInputPrefix c UNIV (\<lambda>x. ((True)\<^sub>e, Q x))"
+  unfolding cTInputPrefix_def
+  by (rule lfp_mono, rule cExtChoice_mono, rule cInput_mono, rule assms, rule order_refl)
+
+lemma cTOutput_mono [mono_rule]:
+  "P\<^sub>1 \<le> P\<^sub>2 \<Longrightarrow> cTOutputPrefix c (e)\<^sub>e P\<^sub>1 \<le> cTOutputPrefix c (e)\<^sub>e P\<^sub>2"
+  unfolding cTOutputPrefix_def
+  by (rule lfp_mono, rule cExtChoice_mono, rule cOutput_mono, assumption, rule order_refl)
+
+lemma cTExtChoice_mono [mono_rule]:
+  "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cTExtChoice P\<^sub>1 Q\<^sub>1 \<le> cTExtChoice P\<^sub>2 Q\<^sub>2"
+  unfolding cTExtChoice_def by (rule cSyncExtChoice_mono)
+
+lemma cTGuard_mono [mono_rule]:
+  "P\<^sub>1 \<le> P\<^sub>2 \<Longrightarrow> cTGuard b P\<^sub>1 \<le> cTGuard b P\<^sub>2"
+  unfolding cTGuard_def
+  by (rule cExtChoice_mono, rule cGuard_mono, assumption, rule order_refl)
+
+lemma cTInterrupt_mono [mono_rule]:
+  "\<lbrakk> P\<^sub>1 \<le> P\<^sub>2; Q\<^sub>1 \<le> Q\<^sub>2 \<rbrakk> \<Longrightarrow> cTInterrupt P\<^sub>1 Q\<^sub>1 \<le> cTInterrupt P\<^sub>2 Q\<^sub>2"
+  unfolding cTInterrupt_def by (rule cSyncInterrupt_mono)
+
+(* TM-01 - Wei p. 5, Definition 2; p. 15, (45), Definition 11; proved from cInitialTimeout1_def, MO-01 and MO-02 *)
+lemma ax_initialTimeout1_unit_mono [mono_rule, cyphy_refinement]:
+  "P' \<le> P \<Longrightarrow> Q' \<le> Q \<Longrightarrow>
+    cInitialTimeout1 P' Q' \<le> cInitialTimeout1 P (Q :: 'e::tock cyphyprocess)"
+  unfolding cInitialTimeout1_def
+  by (rule cExtChoice_mono, rule cSyncExtChoice_mono, rule order_refl, assumption,
+      rule cEventPrefix_mono, assumption)
+
+(* TM-02 - Wei p. 5, Definition 2; p. 16, (53); proved from cStartDeadline_def and MO-01 *)
+lemma ax_startDeadline_unit_mono [mono_rule, cyphy_refinement]:
+  "P' \<le> P \<Longrightarrow>
+    cStartDeadline d P' \<le> cStartDeadline d (P :: 'e::tock cyphyprocess)"
+  unfolding cStartDeadline_def
+  by (rule cSyncExtChoice_mono, assumption, rule order_refl)
 
 subsection \<open>Maximal progress and priority\<close>
 
@@ -1061,13 +1195,13 @@ axiomatization where
   ax_prioritise_initialTimeout1_disjoint:
     "A \<inter> V = {} \<Longrightarrow> cPrioritise V (cInitialTimeout1 (cPrefixChoice A P) Q) =
       cInitialTimeout1 (cPrefixChoice A (\<lambda>e. cPrioritise V (P e)))
-        (cPrioritise V (Q :: 'e cyphyprocess))"
+        (cPrioritise V (Q :: 'e::tock cyphyprocess))"
 
 (* PR-06 - tick-tock-CSP FL Pri_ExtChoice_two_prefixes; robochart-csp-gen core_timed.csp, TimeOut_1 and StartBy *)
 axiomatization where
   ax_prioritise_initialTimeout1_urgent:
     "A \<inter> V \<noteq> {} \<Longrightarrow> cPrioritise V (cInitialTimeout1 (cPrefixChoice A P) Q) =
-      cStartDeadline 0 (cPrefixChoice A (\<lambda>e. cPrioritise V (P e :: 'e cyphyprocess)))"
+      cStartDeadline 0 (cPrefixChoice A (\<lambda>e. cPrioritise V (P e :: 'e::tock cyphyprocess)))"
 
 declare [[literal_variables]]
 
