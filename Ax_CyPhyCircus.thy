@@ -264,6 +264,11 @@ lemma ax_cExtChoice_stop_right [ax_step_laws]:
   "cExtChoice P cStop = P"
   by (metis ax_cExtChoice_comm ax_cExtChoice_stop_left)
 
+(* EC-05 - UCS p. 302, (13.17) *)
+axiomatization where
+  ax_cExtChoice_skip:
+    "cExtChoice P cSkip = cSlidingChoice P (cSkip :: 'e cyphyprocess)"
+
 (* SQ-01 - UCS p. 133, (7.4); synchronisation-prefix form, via ax_cSync_event_prefix *)
 lemma ax_cSeq_sync_prefix:
   "cSeq (cSyncPrefix c P) Q = cSyncPrefix c (cSeq P Q)"
@@ -359,6 +364,13 @@ axiomatization where
       cSlidingChoice (cPrefixChoice (A - S) (\<lambda>e. cHide (P e) S))
         (cIntChoiceIdx (A \<inter> S) (\<lambda>e. cHide (P e :: 'e cyphyprocess) S))"
 
+(* HI-09 - UCS p. 300, (13.3) *)
+axiomatization where
+  ax_hide_sliding_mprefix:
+    "cHide (cSlidingChoice (cPrefixChoice A P) Q) X =
+      cSlidingChoice (cPrefixChoice (A - X) (\<lambda>e. cHide (P e) X))
+        (Sup (insert (cHide Q X) ((\<lambda>e. cHide (P e :: 'e cyphyprocess) X) ` (A \<inter> X))))"
+
 (* HI-03 - Oliveira p. 209, C.120; AFP HOL-CSP Hiding_SKIP *)
 axiomatization where
   ax_hide_skip [cyphy_normalisation]: "cHide cSkip S = (cSkip :: 'e cyphyprocess)"
@@ -370,8 +382,7 @@ axiomatization where
 (* HI-06 - UCS p. 95, (5.3) *)
 axiomatization where
   ax_hide_twice [cyphy_normalisation]:
-    "finite A \<Longrightarrow>
-      cHide (cHide P A) B = cHide (P :: 'e cyphyprocess) (A \<union> B)"
+    "cHide (cHide P A) B = cHide (P :: 'e cyphyprocess) (A \<union> B)"
 
 (* RN-01 - UCS p. 106, (5.15) *)
 axiomatization where
@@ -414,6 +425,22 @@ axiomatization where
 axiomatization where
   ax_guard_conj [cyphy_normalisation]:
     "cGuard b (cGuard c P) = cGuard (\<lambda>s. b s \<and> c s) P"
+
+(* UD-01 - UCS p. 95, (5.1), for any index set *)
+axiomatization where
+  ax_hide_Sup:
+    "cHide (Sup M) H = Sup ((\<lambda>P. cHide P H) ` (M :: 'e cyphyprocess set))" and
+  (* UD-04 - UCS p. 139, for any index set *)
+  ax_interrupt_Sup:
+    "cInterrupt (Sup M) Q = Sup ((\<lambda>P. cInterrupt P Q) ` (M :: 'e cyphyprocess set))"
+
+(* Proved from ax_hide_Sup. *)
+lemma cHide_bot: "cHide (bot :: 'e cyphyprocess) H = bot"
+  using ax_hide_Sup[of "{}" H] by simp
+
+(* Proved from ax_interrupt_Sup. *)
+lemma cInterrupt_bot: "cInterrupt (bot :: 'e cyphyprocess) Q = bot"
+  using ax_interrupt_Sup[of "{}" Q] by simp
 
 (* ALG-01 - UCS p. 25, (2.7) *)
 axiomatization where
@@ -587,6 +614,64 @@ lemma cRename_graph_mprefix [cyphy_normalisation]:
 lemma cCompleteRenaming_total:
   "Domain (cCompleteRenaming R) = UNIV"
   by (auto simp: cCompleteRenaming_def Domain_def)
+
+(* RN-04 - FDR manual, Renaming *)
+axiomatization where
+  ax_rename_partial:
+    "cRename R P = cRename (cCompleteRenaming R) (P :: 'e cyphyprocess)"
+
+(* RN-06 - based on UCS p. 108, Exercise 5.9; p. 104, (5.11) *)
+axiomatization where
+  ax_rename_hide_fun:
+    "(\<And>x y. f x = f y \<Longrightarrow> x \<in> X \<Longrightarrow> y \<in> X) \<Longrightarrow>
+      cRename {(e, f e) |e. True} (cHide P X) = cHide (cRename {(e, f e) |e. True} (P :: 'e cyphyprocess)) (f ` X)"
+
+(* RN-05 - based on UCS p. 108, Exercise 5.9; from RN-04 and RN-06 *)
+lemma ax_rename_hide:
+  assumes sv: "single_valued R" and dom: "Domain R \<inter> H = {}" and ran: "Range R \<inter> H = {}"
+  shows "cRename R (cHide P H) = cHide (cRename R (P :: 'e cyphyprocess)) H"
+proof -
+  define f where "f x = (if x \<in> Domain R then (THE y. (x, y) \<in> R) else x)" for x
+  have img: "(x, f x) \<in> R" if "x \<in> Domain R" for x
+  proof -
+    from that obtain y where y: "(x, y) \<in> R" by auto
+    then have "(THE y. (x, y) \<in> R) = y" using sv by (auto simp add: single_valued_def)
+    then show ?thesis using y that by (simp add: f_def)
+  qed
+  have pair: "(a, b) \<in> cCompleteRenaming R \<longleftrightarrow> b = f a" for a b
+  proof (cases "a \<in> Domain R")
+    case True
+    then have "(a, b) \<in> R \<longleftrightarrow> b = f a" using img[OF True] sv by (auto simp add: single_valued_def)
+    then show ?thesis using True by (auto simp add: cCompleteRenaming_def)
+  next
+    case False
+    then show ?thesis by (auto simp add: cCompleteRenaming_def f_def)
+  qed
+  have graph: "cCompleteRenaming R = {(e, f e) |e. True}"
+    using pair by auto
+  have same: "f x = x" if "x \<in> H" for x
+    using that dom by (auto simp add: f_def)
+  have image: "f ` H = H"
+    using same by force
+  have hidden: "y \<in> H" if "f x = f y" "x \<in> H" for x y
+  proof (cases "y \<in> Domain R")
+    case True
+    then have "f y \<in> Range R" using img by auto
+    moreover have "f y \<in> H" using that same by simp
+    ultimately show ?thesis using ran by auto
+  next
+    case False
+    then have "f y = y" by (simp add: f_def)
+    then show ?thesis using that same by simp
+  qed
+  have "cRename R (cHide P H) = cRename {(e, f e) |e. True} (cHide P H)"
+    by (subst ax_rename_partial) (simp only: graph)
+  also have "... = cHide (cRename {(e, f e) |e. True} P) (f ` H)"
+    by (rule ax_rename_hide_fun) (rule hidden)
+  also have "... = cHide (cRename R P) H"
+    by (subst (2) ax_rename_partial) (simp only: graph image)
+  finally show ?thesis .
+qed
 
 (* RF-07 - TPC pp. 187-188, Theorem 8.2.1 *)
 lemma cRename_complete_mono [mono_rule, cyphy_refinement]:
@@ -855,6 +940,12 @@ qed
 lemma cPrefixChoice_cong:
   "(\<And>e. e \<in> A \<Longrightarrow> P e = Q e) \<Longrightarrow> cPrefixChoice A P = cPrefixChoice A Q"
   unfolding cPrefixChoice_def by (rule cExtChoiceIdx_cong; simp)
+
+(* Proved from cPrefixChoice_def and indexed-choice congruence. *)
+lemma cPrefixChoice_cong_simp:
+  "A = B \<Longrightarrow> (\<And>e. e \<in> B \<Longrightarrow> P e = Q e) \<Longrightarrow>
+    cPrefixChoice A P = cPrefixChoice B Q"
+  by (auto intro: cPrefixChoice_cong)
 
 (* CO-01 / MP-06 - UCS p. 27, (2.14) *)
 lemma cInputPrefix_mprefix:
